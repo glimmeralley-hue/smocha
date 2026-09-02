@@ -1,0 +1,24 @@
+# Render blueprint — zero-config but EPHEMERAL disk (see DEPLOY.md Option 2).
+services:
+  - type: web
+    name: smocha
+    runtime: node
+    plan: free
+    buildCommand: npm install --prefix server && npm install --prefix client && npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CREW_PASSCODE
+        sync: false
+      - key: SEED_DEMO
+        value: "false"
+      - key: EVENTS_ENABLED
+        value: "true"
+      # Render sits behind one proxy hop — required so rate limiting keys on
+      # the real client IP instead of treating everyone as 10.0.0.1.
+      - key: TRUST_PROXY
+        value: "1"

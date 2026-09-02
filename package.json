@@ -1,0 +1,20 @@
+{
+  "name": "smocha",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SMOCHA — crew hangout hub (server + client)",
+  "scripts": {
+    "dev": "concurrently -n server,client -c yellow,cyan \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "server": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "test": "npm --prefix server test",
+    "start": "npm --prefix server run start"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
