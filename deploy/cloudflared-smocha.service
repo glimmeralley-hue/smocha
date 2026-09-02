@@ -5,14 +5,11 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=dyllan
-# Quick tunnel: outbound-only connection, HTTPS from Cloudflare, no card / no
-# domain needed. The public URL (https://*.trycloudflare.com) changes on every
-# restart — find it with: journalctl -u cloudflared-smocha.service | grep trycloudflare
-ExecStart=/usr/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:5000
+# USER-scope unit — no root needed. Installed to ~/.config/systemd/user/.
+ExecStart=/home/dyllan/.local/bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:5000
 Restart=always
 RestartSec=5
 NoNewPrivileges=true
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
