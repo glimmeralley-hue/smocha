@@ -47,7 +47,8 @@ never charges on the Always Free tier.
    # NODE_ENV=production, IG_SESSIONID (your Option-B cookie)
    ```
 
-5. Run it as a service that survives reboots — `/etc/systemd/system/smocha.service`:
+5. Run it as a service that survives reboots — `/etc/systemd/system/smocha.service`.
+   Runs on port 5000 (no sudo needed), then nginx fronts port 80:
 
    ```ini
    [Unit]
@@ -58,9 +59,9 @@ never charges on the Always Free tier.
    WorkingDirectory=/home/ubuntu/smocha/server
    ExecStart=/usr/bin/node index.js
    Environment=NODE_ENV=production
-   Environment=PORT=80
-   # Server faces the internet directly here (no proxy in front) → 0 hops.
-   Environment=TRUST_PROXY=0
+   Environment=PORT=5000
+   # One proxy hop (nginx) sits in front → trust 1 hop for real client IPs.
+   Environment=TRUST_PROXY=1
    Restart=always
    User=ubuntu
 
@@ -72,7 +73,51 @@ never charges on the Always Free tier.
    sudo systemctl enable --now smocha
    ```
 
-6. Daily backups (SQLite is a single file — just copy it):
+6. **nginx front + firewall.** Node can't bind port 80 as a non-root user, so nginx
+   (running as root) handles the public port and proxies to the app:
+
+   ```bash
+   sudo apt-get install -y nginx
+   ```
+
+   `/etc/nginx/sites-available/smocha`:
+   ```nginx
+   server {
+       listen 80;
+       server_name _;
+
+       location / {
+           proxy_pass http://127.0.0.1:5000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+   ```
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/smocha /etc/nginx/sites-enabled/
+   sudo rm -f /etc/nginx/sites-enabled/default
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+
+   Open port 80 on the instance firewall (Oracle Ubuntu images ship iptables):
+   ```bash
+   sudo iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+   sudo netfilter-persistent save 2>/dev/null || sudo apt-get install -y netfilter-persistent
+   ```
+   (Keep TCP 80 → VMs size; HTTPS comes from certbot or Cloudflare — see below.)
+
+7. **(Recommended) HTTPS.** Get a free certificate with Let's Encrypt after you have a
+   domain pointing at the VM's public IP:
+
+   ```bash
+   sudo apt-get install -y certbot python3-certbot-nginx
+   sudo certbot --nginx -d yourdomain.com
+   ```
+   Once HTTPS is on, ensure port 443 is open in the iptables firewall (same as step 6).
+
+8. Daily backups (SQLite is a single file — just copy it):
 
    ```bash
    crontab -e
