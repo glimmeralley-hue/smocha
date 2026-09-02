@@ -12,6 +12,39 @@ deployment option accordingly.
 
 ---
 
+## Option 0 (no card, no domain, $0): self-host at home + Cloudflare Tunnel
+
+Works when you have **any always-on machine with Linux** that you can leave
+running (desktop you leave on, old laptop, Raspberry Pi). No credit card, no
+domain, no open ports, no static IP needed — `cloudflared` makes an
+**outbound-only** connection to Cloudflare which serves your app over HTTPS.
+
+```bash
+cd ~/hangout
+bash deploy/install-home.sh          # installs cloudflared + 2 systemd services, prints your URL
+```
+
+What you get:
+- SMOCHA runs locally via systemd (auto-starts on boot, restarts on crash),
+  bound to `127.0.0.1` only (`HOST=127.0.0.1` in `server/.env`).
+- `cloudflared tunnel` exposes it at `https://<random>.trycloudflare.com`.
+
+Caveats:
+- The quick-tunnel URL **changes on every tunnel restart** — find the current
+  one with `sudo journalctl -u cloudflared-smocha.service | grep trycloudflare`.
+- Needs the machine powered on 24/7 and a working internet link.
+- For a stable URL later: add a cheap domain to a free Cloudflare account and
+  switch to a named tunnel — or move to Hetzner (below).
+
+Prep notes: `server/.env` must set `NODE_ENV=production`, `HOST=127.0.0.1`,
+`JWT_SECRET`, `CREW_PASSCODE`, `TRUST_PROXY=1` (cloudflared is the proxy hop),
+and (recommended) `DB_PATH` pointing at a fresh prod DB. After the first crew
+signup, restart the service once so `ensureAdmins()` grants admin to the user
+in `ADMIN_USERNAMES`:
+`sudo systemctl restart smocha`.
+
+---
+
 ## Option 1 (recommended): Oracle Cloud "Always Free" VM
 
 The only genuinely free-forever host with **persistent disk and no sleep**.

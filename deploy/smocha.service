@@ -1,0 +1,18 @@
+[Unit]
+Description=SMOCHA — crew hangout hub (Express + SQLite)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Run as the normal desktop user, not root.
+User=dyllan
+WorkingDirectory=/home/dyllan/hangout/server
+# Server reads ./env (dotenv) itself: JWT_SECRET, CREW_PASSCODE, DB_PATH...
+ExecStart=/usr/bin/node index.js
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

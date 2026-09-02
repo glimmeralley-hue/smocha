@@ -18,6 +18,10 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 5000;
+// Bind host. Default 0.0.0.0 (all interfaces) for container/general use; set
+// HOST=127.0.0.1 when a local reverse proxy / tunnel (nginx, cloudflared) is
+// the only thing that should reach the app.
+const HOST = process.env.HOST || '0.0.0.0';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const IS_PROD = NODE_ENV === 'production';
 
@@ -222,16 +226,28 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-app.use(cors({
-  origin(origin, cb) {
-    // Allow non-browser clients (curl, mobile) that send no Origin header
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    cb(new Error('CORS: origin not allowed'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+app.use((req, res, next) => {
+  const corsMw = cors({
+    origin(origin, cb) {
+      // Non-browser clients (curl, mobile) send no Origin header — allow.
+      if (!origin) return cb(null, true);
+      // Explicitly whitelisted origins (cross-origin dev, separate API host).
+      if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+      // Same-origin always allowed — the app is served from the same host it
+      // calls (/api), including behind Cloudflare Tunnel / a custom domain.
+      try {
+        if (new URL(origin).host === req.headers.host) return cb(null, true);
+      } catch {
+        /* malformed origin → reject below */
+      }
+      cb(new Error('CORS: origin not allowed'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+  corsMw(req, res, next);
+});
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
@@ -1144,8 +1160,8 @@ async function start() {
     console.log(`📅 Events scraper enabled — refreshing every ${Math.max(1, hours)}h`);
   }
 
-  serverInstance = app.listen(PORT, () => {
-    console.log(`☕ SMOCHA server running on port ${PORT} (${NODE_ENV})`);
+  serverInstance = app.listen(PORT, HOST, () => {
+    console.log(`☕ SMOCHA server running on http://${HOST}:${PORT} (${NODE_ENV})`);
   });
   serverInstance.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
