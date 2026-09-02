@@ -2,6 +2,10 @@ import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+// Load .env BEFORE reading process.env.DB_PATH below. db.js is imported by
+// index.js before it calls dotenv.config(), so without this, a DB_PATH set in
+// .env would be ignored and the app would silently use the default database.
+import 'dotenv/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Allow an explicit DB path (used by tests, and useful for deploys that want
