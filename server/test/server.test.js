@@ -140,6 +140,35 @@ test('signup rejects a wrong crew passcode', async () => {
   assert.equal(res.status, 401);
 });
 
+test('signup rejects a wrong crew passcode', async () => {
+  const res = await fetch(`${base}/api/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      passcode: 'NOPE',
+      username: 'nope1',
+      password: 'password123',
+      nickname: 'Nope',
+    }),
+  });
+  assert.equal(res.status, 401);
+});
+
+test('passcode is case-insensitive (mixed/lowercase entry works)', async () => {
+  // CREW_PASSCODE is 'TESTPASS'; enter it lowercase to guard against the
+  // regression where lowercase hex passcodes never matched.
+  const res = await fetch(`${base}/api/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      passcode: 'testpass',
+      username: 'casey',
+      password: 'password123',
+      nickname: 'Casey',
+    }),
+  });
+  assert.equal(res.status, 201, 'lowercase passcode entry must succeed');
+});
 test('signup issues a fully encrypted (JWE) token', async () => {
   const { res, data } = await createUser('alice');
   assert.equal(res.status, 201);

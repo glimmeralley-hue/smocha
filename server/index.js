@@ -40,7 +40,10 @@ if (IS_PROD && JWT_SECRET && JWT_SECRET.length < 32) {
 
 // Use the *fallback* variables consistently everywhere (bug fix)
 const jwtSecret = JWT_SECRET || 'smocha-dev-secret';
-const crewPasscode = CREW_PASSCODE || 'SMOCHA';
+// Normalize to UPPERCASE at boot: the passcode comparison uppercases input,
+// so the stored value must be normalized too (otherwise mixed/lowercase
+// passcodes like a hex string never match). Passcode remains case-insensitive.
+const crewPasscode = (CREW_PASSCODE || 'SMOCHA').toUpperCase();
 
 const JWT_ISSUER = 'smocha';
 const JWT_AUDIENCE = 'smocha-client';
